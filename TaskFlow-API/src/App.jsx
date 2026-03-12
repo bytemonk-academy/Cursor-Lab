@@ -71,45 +71,93 @@ function useAuth() {
   return { token, user, loading, loginOrRegister, logout };
 }
 
-const MOCK_PROJECTS = [
-  {
-    id: 'p1',
-    name: 'Cursor Autopilot',
-    code: 'AUTOPILOT',
-    accent: 'from-[#ff6a3d] to-[#ffb199]',
-    tasks: [
-      { id: 't1', title: 'Design task schema', status: 'In Progress' },
-      { id: 't2', title: 'Wire JWT guard middleware', status: 'Blocked' },
-      { id: 't3', title: 'Implement optimistic UI for drag', status: 'Todo' },
-    ],
-  },
-  {
-    id: 'p2',
-    name: 'RAG Playground',
-    code: 'RAG-LAB',
-    accent: 'from-[#ff2ddf] to-[#fda4ff]',
-    tasks: [
-      { id: 't4', title: 'Setup collection presets', status: 'In Review' },
-      { id: 't5', title: 'Add latency telemetry chips', status: 'Done' },
-    ],
-  },
-  {
-    id: 'p3',
-    name: 'ByteMonk Website',
-    code: 'BYTEMONK',
-    accent: 'from-[#8e5bff] to-[#38bdf8]',
-    tasks: [
-      { id: 't6', title: 'Refine hero animation curve', status: 'Todo' },
-      { id: 't7', title: 'Dark/light toggle microcopy', status: 'Todo' },
-    ],
-  },
-];
+function Dashboard({ user, onLogout, token }) {
+  const [projects, setProjects] = useState([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState('');
+  const [projectForm, setProjectForm] = useState({
+    name: '',
+    code: '',
+    description: '',
+  });
 
-function Dashboard({ user, onLogout }) {
-  const totalTasks = MOCK_PROJECTS.reduce(
-    (sum, project) => sum + project.tasks.length,
-    0
-  );
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetch(`${API_BASE}/api/projects`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setProjects(data.projects || []);
+    };
+    load();
+  }, [token]);
+
+  const createProject = async () => {
+    setEditingId('');
+    setProjectForm({
+      name: '',
+      code: '',
+      description: '',
+    });
+    setIsFormOpen(true);
+  };
+
+  const editProject = (project) => {
+    setEditingId(project._id);
+    setProjectForm({
+      name: project.name || '',
+      code: project.code || '',
+      description: project.description || '',
+    });
+    setIsFormOpen(true);
+  };
+
+  const onProjectFormChange = (e) => {
+    setProjectForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const submitProjectForm = async (e) => {
+    e.preventDefault();
+    const body = {
+      name: projectForm.name.trim(),
+      code: projectForm.code.trim(),
+      description: projectForm.description.trim(),
+    };
+
+    if (!editingId) {
+      const res = await fetch(`${API_BASE}/api/projects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      setProjects((prev) => [data.project, ...prev]);
+    } else {
+      const res = await fetch(`${API_BASE}/api/projects/${editingId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      setProjects((prev) => prev.map((p) => (p._id === editingId ? data.project : p)));
+    }
+
+    setIsFormOpen(false);
+  };
+
+  const deleteProject = async (id) => {
+    await fetch(`${API_BASE}/api/projects/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setProjects((prev) => prev.filter((p) => p._id !== id));
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden px-4 sm:px-8 py-6 text-slate-50">
@@ -125,15 +173,9 @@ function Dashboard({ user, onLogout }) {
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
               <span className="byte-gradient-text">Projects</span> overview
             </h1>
-            <div className="mt-1 flex items-center gap-4 text-xs sm:text-[0.8rem] text-slate-400">
-              <p>
-                Signed in as <span className="text-slate-100">{user.email}</span>
-              </p>
-              <div className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.04] px-3 py-0.5 text-[0.68rem] font-medium">
-                <span className="text-slate-300">Tasks</span>
-                <span className="byte-gradient-text text-[0.75rem]">{totalTasks}</span>
-              </div>
-            </div>
+            <p className="mt-1 text-xs sm:text-[0.8rem] text-slate-400">
+              Signed in as <span className="text-slate-100">{user.email}</span>
+            </p>
           </div>
         </div>
 
@@ -157,61 +199,182 @@ function Dashboard({ user, onLogout }) {
               Active projects
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Just layout for now – wire this to real CRUD later.
+              Create, rename, and archive projects. Tasks will be wired in later.
             </p>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ff6a3d] via-[#ff2ddf] to-[#8e5bff] px-4 py-1.5 text-[0.72rem] font-medium shadow-[0_18px_40px_rgba(0,0,0,0.85)]"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
-            New project
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={createProject}
+              className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ff6a3d] via-[#ff2ddf] to-[#8e5bff] px-4 py-1.5 text-[0.72rem] font-medium shadow-[0_18px_40px_rgba(0,0,0,0.85)]"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+              New project
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {MOCK_PROJECTS.map((project) => (
+          {projects.map((project) => (
             <div
-              key={project.id}
+              key={project._id}
               className="relative rounded-2xl border border-white/15 bg-white/[0.02] px-4 py-4 sm:px-5 sm:py-5 overflow-hidden hover:border-white/40 hover:bg-white/[0.03] transition-colors"
             >
               <div
-                className={`absolute -top-12 -right-10 h-28 w-28 rounded-full bg-gradient-to-br ${project.accent} opacity-40 blur-2xl`}
+                className="absolute -top-12 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-[#ff6a3d] via-[#ff2ddf] to-[#8e5bff] opacity-40 blur-2xl"
               />
 
               <div className="relative flex items-center justify-between gap-2 mb-3">
                 <div>
                   <p className="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-slate-400">
-                    {project.code}
+                    {project.code || 'PROJECT'}
                   </p>
                   <p className="text-sm sm:text-[0.95rem] font-medium text-slate-50">
                     {project.name}
                   </p>
                 </div>
-                <span className="text-[0.6rem] text-slate-400">Demo-only layout</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => editProject(project)}
+                    className="text-[0.6rem] text-slate-400 hover:text-sky-200 transition"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteProject(project._id)}
+                    className="text-[0.6rem] text-slate-400 hover:text-rose-300 transition"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
 
               <div className="relative mt-3 space-y-1.5">
-                {project.tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center justify-between rounded-xl bg-black/40 border border-white/10 px-3 py-2"
-                  >
-                    <p className="text-[0.7rem] text-slate-200 truncate">{task.title}</p>
-                  </div>
-                ))}
+                {project.description ? (
+                  <p className="text-[0.7rem] text-slate-300/90 line-clamp-3">
+                    {project.description}
+                  </p>
+                ) : (
+                  <p className="text-[0.7rem] text-slate-500 italic">
+                    No description yet. Click edit to add context.
+                  </p>
+                )}
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {isFormOpen && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-md px-[1px] rounded-3xl bg-gradient-to-br from-[#ff6a3d]/50 via-[#ff2ddf]/40 to-[#8e5bff]/40 shadow-[0_30px_90px_rgba(0,0,0,0.9)]">
+            <div className="absolute inset-0 rounded-3xl byte-orbit opacity-40 pointer-events-none" />
+            <div className="relative rounded-[22px] bg-[#05000b]/95 px-6 py-6 sm:px-7 sm:py-7">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-[0.7rem] tracking-[0.25em] uppercase text-slate-400">
+                    {editingId ? 'Edit project' : 'New project'}
+                  </p>
+                  <h2 className="text-lg font-semibold tracking-tight text-slate-50">
+                    <span className="byte-gradient-text">
+                      {editingId ? 'Update' : 'Create'}
+                    </span>{' '}
+                    ByteMonk space
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFormOpen(false)}
+                  className="text-xs text-slate-400 hover:text-slate-100 transition"
+                >
+                  Close
+                </button>
+              </div>
+
+              <form onSubmit={submitProjectForm} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="project-name"
+                    className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-slate-300"
+                  >
+                    Project name
+                  </label>
+                  <input
+                    id="project-name"
+                    name="name"
+                    value={projectForm.name}
+                    onChange={onProjectFormChange}
+                    className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-slate-50 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] outline-none transition focus:border-[#ff6a3d] focus:shadow-[0_0_0_1px_rgba(255,106,61,0.7),0_16px_40px_rgba(0,0,0,0.9)] placeholder:text-slate-500"
+                    placeholder="Sprint Board, RAG Playground…"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="project-code"
+                    className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-slate-300"
+                  >
+                    Project code
+                  </label>
+                  <input
+                    id="project-code"
+                    name="code"
+                    value={projectForm.code}
+                    onChange={onProjectFormChange}
+                    className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-slate-50 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] outline-none transition focus:border-[#ff2ddf] focus:shadow-[0_0_0_1px_rgba(255,45,223,0.7),0_16px_40px_rgba(0,0,0,0.9)] placeholder:text-slate-500 uppercase"
+                    placeholder="AUTOPILOT"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="project-description"
+                    className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-slate-300"
+                  >
+                    Description (optional)
+                  </label>
+                  <textarea
+                    id="project-description"
+                    name="description"
+                    rows={3}
+                    value={projectForm.description}
+                    onChange={onProjectFormChange}
+                    className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-slate-50 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] outline-none transition focus:border-[#8e5bff] focus:shadow-[0_0_0_1px_rgba(142,91,255,0.7),0_16px_40px_rgba(0,0,0,0.9)] placeholder:text-slate-500 resize-none"
+                    placeholder="Short context for how you use this space in demos."
+                  />
+                </div>
+
+                <div className="mt-4 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsFormOpen(false)}
+                    className="inline-flex items-center rounded-full border border-white/15 bg-white/[0.02] px-4 py-2 text-xs font-medium text-slate-200 hover:bg-white/[0.05] transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center rounded-full bg-gradient-to-r from-[#ff6a3d] via-[#ff2ddf] to-[#8e5bff] px-5 py-2 text-xs font-medium text-white shadow-[0_20px_45px_rgba(0,0,0,0.85)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.95)] transition"
+                  >
+                    {editingId ? 'Save changes' : 'Create project'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function App() {
   const [mode, setMode] = useState('login');
-  const { user, loading, loginOrRegister, logout } = useAuth();
+  const { token, user, loading, loginOrRegister, logout } = useAuth();
   const [form, setForm] = useState({ name: '', email: '', password: '' });
 
   const onChange = (e) => {
@@ -232,7 +395,7 @@ function App() {
   };
 
   if (user) {
-    return <Dashboard user={user} onLogout={logout} />;
+    return <Dashboard user={user} onLogout={logout} token={token} />;
   }
 
   return (
