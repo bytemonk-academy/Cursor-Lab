@@ -71,6 +71,113 @@ function useAuth() {
   return { token, user, loading, loginOrRegister, logout };
 }
 
+function ProjectTasks({ projectId, tasks, onAddTask, onUpdateTask, onDeleteTask }) {
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState('');
+  const [editingTitle, setEditingTitle] = useState('');
+
+  const handleAdd = (e) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim()) return;
+    onAddTask(projectId, newTaskTitle.trim());
+    setNewTaskTitle('');
+  };
+
+  const startEdit = (task) => {
+    setEditingTaskId(task._id);
+    setEditingTitle(task.title || '');
+  };
+
+  const submitEdit = (e) => {
+    e.preventDefault();
+    if (editingTaskId && editingTitle.trim()) {
+      onUpdateTask(projectId, editingTaskId, editingTitle.trim());
+      setEditingTaskId('');
+      setEditingTitle('');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingTaskId('');
+    setEditingTitle('');
+  };
+
+  return (
+    <div className="mt-3 space-y-2">
+      <form onSubmit={handleAdd} className="flex gap-2">
+        <input
+          type="text"
+          value={newTaskTitle}
+          onChange={(e) => setNewTaskTitle(e.target.value)}
+          placeholder="Add task…"
+          className="flex-1 min-w-0 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[0.7rem] text-slate-100 placeholder:text-slate-500 outline-none focus:border-[#ff6a3d]/60"
+        />
+        <button
+          type="submit"
+          className="rounded-lg bg-white/[0.06] px-2.5 py-1.5 text-[0.65rem] font-medium text-slate-200 hover:bg-white/[0.1] transition"
+        >
+          Add
+        </button>
+      </form>
+      <div className="space-y-1.5">
+        {tasks.map((task) => (
+          <div
+            key={task._id}
+            className="flex items-center justify-between gap-2 rounded-lg bg-black/40 border border-white/10 px-2.5 py-1.5 group"
+          >
+            {editingTaskId === task._id ? (
+              <form onSubmit={submitEdit} className="flex flex-1 gap-1.5">
+                <input
+                  type="text"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  autoFocus
+                  className="flex-1 min-w-0 rounded border border-white/15 bg-white/[0.04] px-2 py-1 text-[0.7rem] text-slate-100 outline-none focus:border-[#ff2ddf]/60"
+                />
+                <button
+                  type="submit"
+                  className="text-[0.6rem] text-sky-300 hover:text-sky-200"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="text-[0.6rem] text-slate-400 hover:text-slate-200"
+                >
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <>
+                <p className="text-[0.7rem] text-slate-200 truncate flex-1 min-w-0">
+                  {task.title}
+                </p>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(task)}
+                    className="text-[0.6rem] text-slate-400 hover:text-sky-200"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteTask(projectId, task._id)}
+                    className="text-[0.6rem] text-slate-400 hover:text-rose-300"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ user, onLogout, token }) {
   const [projects, setProjects] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -159,6 +266,76 @@ function Dashboard({ user, onLogout, token }) {
     setProjects((prev) => prev.filter((p) => p._id !== id));
   };
 
+  const totalTasks = projects.reduce(
+    (sum, p) => sum + (Array.isArray(p.tasks) ? p.tasks.length : 0),
+    0
+  );
+
+  const addTask = async (projectId, title) => {
+    if (!title || !title.trim()) return;
+    const res = await fetch(`${API_BASE}/api/projects/${projectId}/tasks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ title: title.trim() }),
+    });
+    const data = await res.json();
+    setProjects((prev) =>
+      prev.map((p) =>
+        p._id === projectId
+          ? { ...p, tasks: [...(p.tasks || []), data.task] }
+          : p
+      )
+    );
+  };
+
+  const updateTask = async (projectId, taskId, title) => {
+    if (!title || !title.trim()) return;
+    const res = await fetch(
+      `${API_BASE}/api/projects/${projectId}/tasks/${taskId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title: title.trim() }),
+      }
+    );
+    const data = await res.json();
+    setProjects((prev) =>
+      prev.map((p) =>
+        p._id === projectId
+          ? {
+              ...p,
+              tasks: (p.tasks || []).map((t) =>
+                t._id === taskId ? data.task : t
+              ),
+            }
+          : p
+      )
+    );
+  };
+
+  const deleteTask = async (projectId, taskId) => {
+    await fetch(
+      `${API_BASE}/api/projects/${projectId}/tasks/${taskId}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    setProjects((prev) =>
+      prev.map((p) =>
+        p._id === projectId
+          ? { ...p, tasks: (p.tasks || []).filter((t) => t._id !== taskId) }
+          : p
+      )
+    );
+  };
+
   return (
     <div className="relative min-h-screen overflow-hidden px-4 sm:px-8 py-6 text-slate-50">
       <div className="byte-orbit" />
@@ -173,9 +350,13 @@ function Dashboard({ user, onLogout, token }) {
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
               <span className="byte-gradient-text">Projects</span> overview
             </h1>
-            <p className="mt-1 text-xs sm:text-[0.8rem] text-slate-400">
-              Signed in as <span className="text-slate-100">{user.email}</span>
-            </p>
+            <div className="mt-1 flex items-center gap-4 text-xs sm:text-[0.8rem] text-slate-400">
+              <span>Signed in as <span className="text-slate-100">{user.email}</span></span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.04] px-2.5 py-0.5">
+                <span className="text-slate-300">Tasks</span>
+                <span className="byte-gradient-text font-medium">{totalTasks}</span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -199,7 +380,7 @@ function Dashboard({ user, onLogout, token }) {
               Active projects
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Create, rename, and archive projects. Tasks will be wired in later.
+              Create projects and add tasks under each. Tasks are heading-only, no labels.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -251,17 +432,18 @@ function Dashboard({ user, onLogout, token }) {
                 </div>
               </div>
 
-              <div className="relative mt-3 space-y-1.5">
-                {project.description ? (
-                  <p className="text-[0.7rem] text-slate-300/90 line-clamp-3">
-                    {project.description}
-                  </p>
-                ) : (
-                  <p className="text-[0.7rem] text-slate-500 italic">
-                    No description yet. Click edit to add context.
-                  </p>
-                )}
-              </div>
+              {(project.description || '').trim() && (
+                <p className="text-[0.65rem] text-slate-500 line-clamp-2 mb-2">
+                  {project.description}
+                </p>
+              )}
+              <ProjectTasks
+                projectId={project._id}
+                tasks={project.tasks || []}
+                onAddTask={addTask}
+                onUpdateTask={updateTask}
+                onDeleteTask={deleteTask}
+              />
             </div>
           ))}
         </div>
