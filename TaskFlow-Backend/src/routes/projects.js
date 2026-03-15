@@ -2,6 +2,7 @@ const express = require('express');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
 const requireAuth = require('../middleware/requireAuth');
+const notificationService = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -38,6 +39,8 @@ router.post('/', async (req, res) => {
     description: description || '',
   });
 
+  await notificationService.projectCreated(req.userId, req.userEmail, project);
+
   res.status(201).json({ project });
 });
 
@@ -69,6 +72,8 @@ router.put('/:id', async (req, res) => {
     return res.status(404).json({ message: 'Project not found' });
   }
 
+  await notificationService.projectUpdated(req.userId, req.userEmail, project);
+
   res.json({ project });
 });
 
@@ -77,8 +82,11 @@ router.delete('/:id', async (req, res) => {
   if (!project) {
     return res.status(404).json({ message: 'Project not found' });
   }
+  const name = project.name;
+  const code = project.code;
   await Task.deleteMany({ project: req.params.id });
   await Project.deleteOne({ _id: req.params.id, owner: req.userId });
+  await notificationService.projectDeleted(req.userId, req.userEmail, name, code);
   res.status(204).end();
 });
 

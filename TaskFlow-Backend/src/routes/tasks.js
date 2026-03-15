@@ -2,6 +2,7 @@ const express = require('express');
 const Task = require('../models/Task');
 const Project = require('../models/Project');
 const requireAuth = require('../middleware/requireAuth');
+const notificationService = require('../services/notificationService');
 
 const router = express.Router({ mergeParams: true });
 
@@ -35,6 +36,8 @@ router.post('/', async (req, res) => {
     title: title.trim(),
   });
 
+  await notificationService.taskCreated(req.userId, req.userEmail, task, req.project?.name);
+
   res.status(201).json({ task });
 });
 
@@ -55,18 +58,28 @@ router.put('/:taskId', async (req, res) => {
     return res.status(404).json({ message: 'Task not found' });
   }
 
+  await notificationService.taskUpdated(req.userId, req.userEmail, task, req.project?.name);
+
   res.json({ task });
 });
 
 router.delete('/:taskId', async (req, res) => {
-  const result = await Task.deleteOne({
+  const task = await Task.findOne({
     _id: req.params.taskId,
     project: req.params.projectId,
   });
 
-  if (result.deletedCount === 0) {
+  if (!task) {
     return res.status(404).json({ message: 'Task not found' });
   }
+
+  const title = task.title;
+  await Task.deleteOne({
+    _id: req.params.taskId,
+    project: req.params.projectId,
+  });
+
+  await notificationService.taskDeleted(req.userId, req.userEmail, title, req.project?.name);
 
   res.status(204).end();
 });

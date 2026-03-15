@@ -173,6 +173,20 @@ function ProjectTasks({ projectId, tasks, onAddTask, onUpdateTask, onDeleteTask 
   );
 }
 
+function formatNotificationTime(createdAt) {
+  const d = new Date(createdAt);
+  const now = new Date();
+  const sec = Math.floor((now - d) / 1000);
+  if (sec < 60) return 'Just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  return d.toLocaleDateString();
+}
+
 function Dashboard({ user, onLogout, token }) {
   const [projects, setProjects] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -182,16 +196,36 @@ function Dashboard({ user, onLogout, token }) {
     code: '',
     description: '',
   });
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  const fetchProjects = async () => {
+    const res = await fetch(`${API_BASE}/api/projects`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setProjects(data.projects || []);
+  };
+
+  const fetchNotifications = async () => {
+    const res = await fetch(`${API_BASE}/api/notifications`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setNotifications(data.notifications || []);
+  };
+
+  const clearNotifications = async () => {
+    await fetch(`${API_BASE}/api/notifications`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setNotifications([]);
+  };
 
   useEffect(() => {
-    const load = async () => {
-      const res = await fetch(`${API_BASE}/api/projects`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setProjects(data.projects || []);
-    };
-    load();
+    fetchProjects();
+    fetchNotifications();
   }, [token]);
 
   const createProject = async () => {
@@ -237,6 +271,7 @@ function Dashboard({ user, onLogout, token }) {
       });
       const data = await res.json();
       setProjects((prev) => [data.project, ...prev]);
+      fetchNotifications();
     } else {
       const res = await fetch(`${API_BASE}/api/projects/${editingId}`, {
         method: 'PUT',
@@ -248,6 +283,7 @@ function Dashboard({ user, onLogout, token }) {
       });
       const data = await res.json();
       setProjects((prev) => prev.map((p) => (p._id === editingId ? data.project : p)));
+      fetchNotifications();
     }
 
     setIsFormOpen(false);
@@ -259,6 +295,7 @@ function Dashboard({ user, onLogout, token }) {
       headers: { Authorization: `Bearer ${token}` },
     });
     setProjects((prev) => prev.filter((p) => p._id !== id));
+    fetchNotifications();
   };
 
   const totalTasks = projects.reduce(
@@ -284,6 +321,7 @@ function Dashboard({ user, onLogout, token }) {
           : p
       )
     );
+    fetchNotifications();
   };
 
   const updateTask = async (projectId, taskId, title) => {
@@ -312,6 +350,7 @@ function Dashboard({ user, onLogout, token }) {
           : p
       )
     );
+    fetchNotifications();
   };
 
   const deleteTask = async (projectId, taskId) => {
@@ -329,6 +368,7 @@ function Dashboard({ user, onLogout, token }) {
           : p
       )
     );
+    fetchNotifications();
   };
 
   return (
@@ -355,13 +395,92 @@ function Dashboard({ user, onLogout, token }) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onLogout}
-          className="inline-flex items-center rounded-full border border-white/20 bg-white/[0.04] px-4 py-1.5 text-xs font-medium text-slate-100 hover:bg-white/[0.08] transition"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setNotificationsOpen((o) => !o)}
+              className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/20 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] transition"
+              aria-label="Notifications"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {notifications.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#ff6a3d] text-[0.6rem] font-medium text-white">
+                  {notifications.length > 99 ? '99+' : notifications.length}
+                </span>
+              )}
+            </button>
+            {notificationsOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  aria-hidden="true"
+                  onClick={() => setNotificationsOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-2 z-20 w-[320px] sm:w-[380px] rounded-2xl border border-white/15 bg-[#0a0512]/98 backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.9)] overflow-hidden">
+                  <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2">
+                    <span className="text-[0.7rem] font-medium uppercase tracking-wider text-slate-300">
+                      Activity
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {notifications.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={clearNotifications}
+                          className="text-[0.65rem] text-slate-400 hover:text-rose-300 transition"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setNotificationsOpen(false)}
+                        className="text-slate-400 hover:text-slate-200 text-xs"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-[320px] overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="px-4 py-6 text-[0.75rem] text-slate-500 text-center">
+                        No activity yet. Create a project or add tasks to see notifications here.
+                      </p>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n._id}
+                          className="px-4 py-3 border-b border-white/5 hover:bg-white/[0.03]"
+                        >
+                          <p className="text-[0.8rem] font-medium text-slate-100">
+                            {n.title}
+                          </p>
+                          {n.message && (
+                            <p className="text-[0.7rem] text-slate-400 mt-0.5 line-clamp-2">
+                              {n.message}
+                            </p>
+                          )}
+                          <p className="text-[0.65rem] text-slate-500 mt-1">
+                            {formatNotificationTime(n.createdAt)}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="inline-flex items-center rounded-full border border-white/20 bg-white/[0.04] px-4 py-1.5 text-xs font-medium text-slate-100 hover:bg-white/[0.08] transition"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
       <div className="relative rounded-[28px] border border-white/10 bg-black/40 px-5 sm:px-7 py-5 sm:py-7 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.85)]">
