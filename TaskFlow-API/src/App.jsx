@@ -375,7 +375,7 @@ function Dashboard({ user, onLogout, token }) {
               Active projects
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Create projects and add tasks under each. Tasks are heading-only, no labels.
+              Create projects and add tasks under each.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -598,8 +598,7 @@ function App() {
                   <span className="byte-gradient-text">Sign in</span> to your workspace
                 </h1>
                 <p className="text-xs sm:text-[0.8rem] text-slate-300/80">
-                  A compact, focused auth screen that drops you straight into your projects +
-                  tasks dashboard.
+                TaskFlow is a lightweight workspace designed to help teams organize projects and manage tasks.
                 </p>
               </div>
             </div>
@@ -693,12 +692,6 @@ function App() {
               >
                 {mode === 'login' ? 'New here? Create an account' : 'Already onboarded? Log in'}
               </button>
-
-              <p className="text-[0.7rem] text-slate-400/80">
-                You will be dropped into a{' '}
-                <span className="byte-gradient-text font-semibold">projects + tasks</span> view after
-                auth.
-              </p>
             </div>
           </div>
         </div>
