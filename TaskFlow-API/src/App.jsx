@@ -1,22 +1,17 @@
 import { useEffect, useState } from 'react';
 import './App.css';
 
+import bytemonkLogo from './assets/BYTEMONK_LOGO.png';
+
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
 
-function GradientBadge() {
+function ByteMonkLogo() {
   return (
-    <div className="relative w-32 h-32 sm:w-40 sm:h-40 byte-float">
-      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#ff6a3d] via-[#ff2ddf] to-[#8e5bff] opacity-80 blur-[2px]" />
-      <div className="absolute inset-[3px] rounded-full bg-gradient-to-b from-[#05000b] via-[#05000b] to-[#13081f]" />
-      <div className="absolute inset-[18%] rounded-full border border-dashed border-[#ffb199]/60 byte-orbit-spin" />
-      <div className="absolute inset-[24%] rounded-3xl border border-[#ff6a3d]/70 shadow-[0_0_28px_rgba(255,106,61,0.7)]" />
-      <div className="absolute inset-[38%_26%_18%_26%] rounded-[34px_34px_70px_70px] border-2 border-[#ff2ddf] shadow-[0_0_30px_rgba(255,45,223,0.7)]" />
-      <div className="absolute left-[30%] top-[32%] w-2.5 h-2.5 rounded-full bg-[#ff6a3d] shadow-[0_0_18px_rgba(255,106,61,0.9)]" />
-      <div className="absolute right-[30%] top-[32%] w-2.5 h-2.5 rounded-full bg-[#ff6a3d] shadow-[0_0_18px_rgba(255,106,61,0.9)]" />
-      <div className="absolute left-[42%] right-[42%] top-[36%] bottom-[36%] border-l border-r border-[#ffb7ff]/50" />
-      <div className="absolute left-[24%] bottom-[18%] right-[24%] h-[3px] rounded-full bg-gradient-to-r from-[#ff6a3d] via-[#ff2ddf] to-[#8e5bff] shadow-[0_0_20px_rgba(255,99,175,0.9)]" />
-      <div className="absolute left-1/2 -translate-x-1/2 -top-[12%] w-6 h-6 rounded-full border-2 border-[#ffb199] shadow-[0_0_18px_rgba(255,177,153,0.8)]" />
-    </div>
+    <img
+      src={bytemonkLogo}
+      alt="ByteMonk"
+      className="w-24 h-24 object-contain byte-float select-none"
+    />
   );
 }
 
@@ -342,7 +337,7 @@ function Dashboard({ user, onLogout, token }) {
 
       <div className="flex items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <GradientBadge />
+          <ByteMonkLogo />
           <div>
             <p className="text-[0.7rem] tracking-[0.3em] uppercase text-slate-400">
               ByteMonk TaskFlow
@@ -594,7 +589,7 @@ function App() {
 
           <div className="relative z-10 rounded-[25px] px-6 sm:px-7 py-7 sm:py-8 flex flex-col gap-6 backdrop-blur-2xl bg-gradient-to-b from-white/7 via-white/3 to-white/[0.03]">
             <div className="flex flex-col items-center gap-4 text-center">
-              <GradientBadge />
+              <ByteMonkLogo />
               <div className="space-y-1.5">
                 <p className="text-[0.7rem] tracking-[0.25em] uppercase text-slate-400">
                   ByteMonk TaskFlow
