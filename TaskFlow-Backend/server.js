@@ -36,6 +36,11 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ message: err.message || 'Internal server error' });
 });
 
+// write "Subscribe to ByteMonk" on / route
+app.get("/", (req, res) => {
+  res.json({ message: "Subscribe to ByteMonk" });
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
