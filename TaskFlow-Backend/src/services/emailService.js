@@ -28,15 +28,29 @@ const transport =
             : undefined,
       });
 
-function sendMail({ to, subject, text, html }) {
-  const from = process.env.MAIL_FROM || (gmailUser ? `TaskFlow <${gmailUser}>` : 'TaskFlow <noreply@taskflow.local>');
-  return transport.sendMail({
-    from,
-    to,
-    subject: subject || 'TaskFlow',
-    text: text || '',
-    html: html || text || '',
-  });
+async function sendMail({ to, subject, text, html }) {
+  const from =
+    process.env.MAIL_FROM ||
+    (gmailUser ? `TaskFlow <${gmailUser}>` : 'TaskFlow <noreply@taskflow.local>');
+
+  try {
+    const info = await transport.sendMail({
+      from,
+      to,
+      subject: subject || 'TaskFlow',
+      text: text || '',
+      html: html || text || '',
+    });
+
+    return info;
+  } catch (err) {
+    console.error('Error sending email:', {
+      to,
+      subject,
+      error: err,
+    });
+    throw new Error('Failed to send email');
+  }
 }
 
 module.exports = { sendMail };
