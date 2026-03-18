@@ -4,7 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watchAll",
     "start": "node server.js"
   },
   "author": "",
@@ -17,5 +18,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.3.0",
     "nodemailer": "^8.0.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }
