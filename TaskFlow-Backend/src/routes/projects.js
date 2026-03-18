@@ -9,7 +9,18 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get('/', async (req, res) => {
-  const projects = await Project.find({ owner: req.userId }).sort({ createdAt: -1 });
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 6, 1), 50);
+
+  const filter = { owner: req.userId };
+
+  const totalProjects = await Project.countDocuments(filter);
+
+  const projects = await Project.find(filter)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit);
+
   const projectIds = projects.map((p) => p._id);
   const tasks = await Task.find({ project: { $in: projectIds } }).sort({ createdAt: 1 });
   const tasksByProject = {};
@@ -22,7 +33,15 @@ router.get('/', async (req, res) => {
     ...p.toObject(),
     tasks: tasksByProject[p._id.toString()] || [],
   }));
-  res.json({ projects: projectsWithTasks });
+  res.json({
+    projects: projectsWithTasks,
+    pagination: {
+      page,
+      limit,
+      totalProjects,
+      totalPages: Math.max(Math.ceil(totalProjects / limit), 1),
+    },
+  });
 });
 
 router.post('/', async (req, res) => {

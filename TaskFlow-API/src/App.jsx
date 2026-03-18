@@ -66,10 +66,13 @@ function useAuth() {
   return { token, user, loading, loginOrRegister, logout };
 }
 
+const TASK_PRIORITIES = ['in_review', 'urgent', 'blocked'];
+
 function ProjectTasks({ projectId, tasks, onAddTask, onUpdateTask, onDeleteTask }) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [editingTaskId, setEditingTaskId] = useState('');
   const [editingTitle, setEditingTitle] = useState('');
+  const [priorityMenuTaskId, setPriorityMenuTaskId] = useState('');
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -86,7 +89,9 @@ function ProjectTasks({ projectId, tasks, onAddTask, onUpdateTask, onDeleteTask 
   const submitEdit = (e) => {
     e.preventDefault();
     if (editingTaskId && editingTitle.trim()) {
-      onUpdateTask(projectId, editingTaskId, editingTitle.trim());
+      const currentTask = tasks.find((t) => t._id === editingTaskId);
+      const currentPriority = currentTask?.priority || 'in_review';
+      onUpdateTask(projectId, editingTaskId, editingTitle.trim(), currentPriority);
       setEditingTaskId('');
       setEditingTitle('');
     }
@@ -95,6 +100,20 @@ function ProjectTasks({ projectId, tasks, onAddTask, onUpdateTask, onDeleteTask 
   const cancelEdit = () => {
     setEditingTaskId('');
     setEditingTitle('');
+  };
+
+  const openPriorityMenu = (task) => {
+    setPriorityMenuTaskId(task._id);
+  };
+
+  const closePriorityMenu = () => {
+    setPriorityMenuTaskId('');
+  };
+
+  const setPriority = (task, priority) => {
+    const title = task.title || '';
+    onUpdateTask(projectId, task._id, title, priority);
+    closePriorityMenu();
   };
 
   return (
@@ -145,10 +164,19 @@ function ProjectTasks({ projectId, tasks, onAddTask, onUpdateTask, onDeleteTask 
               </form>
             ) : (
               <>
-                <p className="text-[0.7rem] text-slate-200 truncate flex-1 min-w-0">
-                  {task.title}
-                </p>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[0.7rem] text-slate-200 truncate">
+                    {task.title}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 transition relative">
+                  <button
+                    type="button"
+                    onClick={() => openPriorityMenu(task)}
+                    className="inline-flex items-center rounded-full border border-white/20 bg-white/[0.05] px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide text-slate-100"
+                  >
+                    <span>{(task.priority || 'in_review').replace('_', ' ')}</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => startEdit(task)}
@@ -163,6 +191,47 @@ function ProjectTasks({ projectId, tasks, onAddTask, onUpdateTask, onDeleteTask 
                   >
                     Delete
                   </button>
+
+                  {priorityMenuTaskId === task._id && (
+                    <div className="absolute right-0 top-full mt-1 z-10 w-36 rounded-lg border border-white/20 bg-black/90 px-2 py-2 shadow-lg">
+                      <p className="mb-1 text-[0.6rem] text-slate-300 uppercase tracking-wide">
+                        Task priority
+                      </p>
+                      <div className="space-y-1 mb-2">
+                        {TASK_PRIORITIES.map((priority) => {
+                          const active = (task.priority || 'in_review') === priority;
+                          return (
+                            <button
+                              key={priority}
+                              type="button"
+                              onClick={() => setPriority(task, priority)}
+                              className={`w-full flex items-center justify-between rounded-md px-1.5 py-0.5 text-[0.6rem] ${
+                                active
+                                  ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/40'
+                                  : 'bg-white/[0.03] text-slate-200 border border-white/10 hover:bg-white/[0.08]'
+                              }`}
+                            >
+                              <span className="uppercase tracking-wide">
+                                {priority.replace('_', ' ')}
+                              </span>
+                              {active && (
+                                <span className="text-[0.6rem]">✓</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={closePriorityMenu}
+                          className="text-[0.6rem] text-slate-400 hover:text-slate-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -189,6 +258,10 @@ function formatNotificationTime(createdAt) {
 
 function Dashboard({ user, onLogout, token }) {
   const [projects, setProjects] = useState([]);
+  const [projectPage, setProjectPage] = useState(1);
+  const [projectTotalPages, setProjectTotalPages] = useState(1);
+  const PROJECTS_PER_PAGE = 6;
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState('');
   const [projectForm, setProjectForm] = useState({
@@ -199,12 +272,23 @@ function Dashboard({ user, onLogout, token }) {
   const [notifications, setNotifications] = useState([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  const fetchProjects = async () => {
-    const res = await fetch(`${API_BASE}/api/projects`, {
+  const fetchProjects = async (page = 1) => {
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', PROJECTS_PER_PAGE.toString());
+
+    const res = await fetch(`${API_BASE}/api/projects?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     setProjects(data.projects || []);
+    if (data.pagination) {
+      setProjectPage(data.pagination.page || 1);
+      setProjectTotalPages(data.pagination.totalPages || 1);
+    } else {
+      setProjectPage(1);
+      setProjectTotalPages(1);
+    }
   };
 
   const fetchNotifications = async () => {
@@ -224,9 +308,21 @@ function Dashboard({ user, onLogout, token }) {
   };
 
   useEffect(() => {
-    fetchProjects();
+    fetchProjects(1);
     fetchNotifications();
   }, [token]);
+
+  useEffect(() => {
+    if (!selectedProjectId && projects.length > 0) {
+      setSelectedProjectId(projects[0]._id);
+    } else if (
+      selectedProjectId &&
+      projects.length > 0 &&
+      !projects.some((p) => p._id === selectedProjectId)
+    ) {
+      setSelectedProjectId(projects[0]._id);
+    }
+  }, [projects, selectedProjectId]);
 
   const createProject = async () => {
     setEditingId('');
@@ -272,6 +368,7 @@ function Dashboard({ user, onLogout, token }) {
       const data = await res.json();
       setProjects((prev) => [data.project, ...prev]);
       fetchNotifications();
+      fetchProjects(1);
     } else {
       const res = await fetch(`${API_BASE}/api/projects/${editingId}`, {
         method: 'PUT',
@@ -284,6 +381,7 @@ function Dashboard({ user, onLogout, token }) {
       const data = await res.json();
       setProjects((prev) => prev.map((p) => (p._id === editingId ? data.project : p)));
       fetchNotifications();
+      fetchProjects(projectPage);
     }
 
     setIsFormOpen(false);
@@ -295,13 +393,18 @@ function Dashboard({ user, onLogout, token }) {
       headers: { Authorization: `Bearer ${token}` },
     });
     setProjects((prev) => prev.filter((p) => p._id !== id));
+    fetchProjects(1);
     fetchNotifications();
   };
 
-  const totalTasks = projects.reduce(
-    (sum, p) => sum + (Array.isArray(p.tasks) ? p.tasks.length : 0),
-    0
-  );
+  const selectedProject =
+    projects.find((p) => p._id === selectedProjectId) || projects[0] || null;
+
+  const selectedProjectTaskCount = selectedProject
+    ? Array.isArray(selectedProject.tasks)
+      ? selectedProject.tasks.length
+      : 0
+    : 0;
 
   const addTask = async (projectId, title) => {
     if (!title || !title.trim()) return;
@@ -311,7 +414,7 @@ function Dashboard({ user, onLogout, token }) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ title: title.trim() }),
+      body: JSON.stringify({ title: title.trim(), priority: 'in_review' }),
     });
     const data = await res.json();
     setProjects((prev) =>
@@ -324,7 +427,7 @@ function Dashboard({ user, onLogout, token }) {
     fetchNotifications();
   };
 
-  const updateTask = async (projectId, taskId, title) => {
+  const updateTask = async (projectId, taskId, title, priority = 'in_review') => {
     if (!title || !title.trim()) return;
     const res = await fetch(
       `${API_BASE}/api/projects/${projectId}/tasks/${taskId}`,
@@ -334,7 +437,7 @@ function Dashboard({ user, onLogout, token }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ title: title.trim() }),
+        body: JSON.stringify({ title: title.trim(), priority }),
       }
     );
     const data = await res.json();
@@ -389,7 +492,9 @@ function Dashboard({ user, onLogout, token }) {
               <span>Signed in as <span className="text-slate-100">{user.email}</span></span>
               <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.04] px-2.5 py-0.5">
                 <span className="text-slate-300">Tasks</span>
-                <span className="byte-gradient-text font-medium">{totalTasks}</span>
+                <span className="byte-gradient-text font-medium">
+                  {selectedProjectTaskCount}
+                </span>
               </span>
             </div>
           </div>
@@ -513,7 +618,12 @@ function Dashboard({ user, onLogout, token }) {
           {projects.map((project) => (
             <div
               key={project._id}
-              className="relative rounded-2xl border border-white/15 bg-white/[0.02] px-4 py-4 sm:px-5 sm:py-5 overflow-hidden hover:border-white/40 hover:bg-white/[0.03] transition-colors"
+              className={`relative rounded-2xl border px-4 py-4 sm:px-5 sm:py-5 overflow-hidden transition-colors ${
+                project._id === selectedProjectId
+                  ? 'border-white/60 bg-white/[0.06]'
+                  : 'border-white/15 bg-white/[0.02] hover:border-white/40 hover:bg-white/[0.03]'
+              }`}
+              onClick={() => setSelectedProjectId(project._id)}
             >
               <div
                 className="absolute -top-12 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-[#ff6a3d] via-[#ff2ddf] to-[#8e5bff] opacity-40 blur-2xl"
@@ -561,6 +671,33 @@ function Dashboard({ user, onLogout, token }) {
             </div>
           ))}
         </div>
+        {projectTotalPages > 1 && (
+          <div className="relative z-10 mt-5 flex items-center justify-between gap-3 text-[0.75rem] text-slate-300">
+            <button
+              type="button"
+              onClick={() => projectPage > 1 && fetchProjects(projectPage - 1)}
+              disabled={projectPage <= 1}
+              className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.03] px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/[0.06] transition"
+            >
+              <span className="text-xs">&larr;</span>
+              <span>Previous</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1 text-[0.7rem] font-medium">
+                Page {projectPage} of {projectTotalPages}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => projectPage < projectTotalPages && fetchProjects(projectPage + 1)}
+              disabled={projectPage >= projectTotalPages}
+              className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.03] px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/[0.06] transition"
+            >
+              <span>Next</span>
+              <span className="text-xs">&rarr;</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {isFormOpen && (
