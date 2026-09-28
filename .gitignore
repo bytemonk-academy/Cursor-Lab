@@ -1,2 +1,4 @@
 node_modules
-.env.env.local
+.env
+.env.local
+TaskFlow-API/TaskFlow-Backend/.env.local
