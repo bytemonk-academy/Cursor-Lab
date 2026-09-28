@@ -18,8 +18,12 @@ function ByteMonkLogo() {
 function useAuth() {
   const [token, setToken] = useState(() => localStorage.getItem('tf_token') || '');
   const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem('tf_user');
-    return raw ? JSON.parse(raw) : null;
+    // Stored data can be stale or corrupt; never let it crash the app on load.
+    try {
+      return JSON.parse(localStorage.getItem('tf_user')) || null;
+    } catch {
+      return null;
+    }
   });
   const [loading, setLoading] = useState(false);
 
@@ -32,6 +36,11 @@ function useAuth() {
         signal: controller.signal,
       });
       const data = await res.json();
+      // Expired or invalid token: clear it instead of storing "undefined".
+      if (!res.ok || !data.user) {
+        logout();
+        return;
+      }
       setUser(data.user);
       localStorage.setItem('tf_user', JSON.stringify(data.user));
     };
@@ -48,6 +57,11 @@ function useAuth() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+    // Only persist auth on success; an error body has no token or user.
+    if (!res.ok || !data.token || !data.user) {
+      setLoading(false);
+      return data;
+    }
     setToken(data.token);
     setUser(data.user);
     localStorage.setItem('tf_token', data.token);
