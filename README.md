@@ -47,7 +47,7 @@ flowchart LR
 ### 2. Clone
 
 ```bash
-git clone https://github.com/bytemonk-academy/Cursor-Lab.git
+git clone https://github.com/bytemonkio/Cursor-Lab.git
 cd Cursor-Lab
 ```
 
