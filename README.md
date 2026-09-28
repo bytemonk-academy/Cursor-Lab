@@ -1,4 +1,4 @@
-# TaskFlow: building a full-stack app with Cursor
+# Cursor Lab: building TaskFlow with Cursor
 
 TaskFlow is a small project and task manager: sign up, create projects, add tasks with a priority, and get a notification (and optionally an email) when things change. The app itself is deliberately ordinary. **The point of this repo is how it was built:** feature by feature with Cursor, then taught Cursor's own conventions through project rules, a custom command, a skill and a cloud agent.
 
@@ -47,8 +47,8 @@ flowchart LR
 ### 2. Clone
 
 ```bash
-git clone https://github.com/bytemonk-academy/Cursor.git taskflow
-cd taskflow
+git clone https://github.com/bytemonk-academy/Cursor-Lab.git
+cd Cursor-Lab
 ```
 
 ### 3. Start MongoDB (pick one)
@@ -128,20 +128,20 @@ TaskFlow-API/
 
 ## Follow along, commit by commit
 
-Each commit is one feature, so you can check it out and see the app at that stage.
+Each step is tagged, so you can check it out and see the app at that stage.
 
-| Step | Commit | What gets added |
+| Step | Tag | What gets added |
 |---|---|---|
-| 1 | `f0c0090` | User auth: register, login, JWT, `User` model, login screen |
-| 2 | `e88bd3a` | Projects CRUD, `requireAuth` middleware, ownership checks |
-| 3 | `807444b` | Tasks CRUD nested under projects, `Task` model |
-| 4 | `41954a9`, `87b35d7` | ByteMonk branding |
-| 5 | `227c33d` | Notifications (model, service, route) and the email service |
-| 6 | `e732bab`, `030d4f9` | Error handling in the notification and email services |
-| 7 | `7499261` | Cursor cloud agent pass: `.cursor/` rules, command and skill, structured logger, Jest tests, task priorities, project pagination |
+| 1 | `step-1-auth` | User auth: register, login, JWT, `User` model, login screen |
+| 2 | `step-2-projects` | Projects CRUD, `requireAuth` middleware, ownership checks |
+| 3 | `step-3-tasks` | Tasks CRUD nested under projects, `Task` model |
+| 4 | `step-4-branding` | ByteMonk branding |
+| 5 | `step-5-notifications` | Notifications (model, service, route) and the email service |
+| 6 | `step-6-error-handling` | Error handling in the notification and email services |
+| 7 | `step-7-cursor-agent` | Cursor cloud agent pass: `.cursor/` rules, command and skill, structured logger, Jest tests, task priorities, project pagination |
 
 ```bash
-git checkout f0c0090                 # jump to a step (read-only "detached HEAD")
+git checkout step-1-auth             # jump to a step (read-only "detached HEAD")
 npm install                          # in each app folder; dependencies change between steps
 git switch main                      # back to the finished version
 ```

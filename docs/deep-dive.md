@@ -148,7 +148,7 @@ Rules are the "why is the AI suddenly writing code the way our team does" lever.
 
 ### Commands: `.cursor/commands/add-logging.md`
 
-A saved prompt you run as `/add-logging` in Cursor chat: import the logger, create one per module, log at the start of every function with context, log in every `catch`. Compare `notificationService.js` before and after commit `7499261` to see its output.
+A saved prompt you run as `/add-logging` in Cursor chat: import the logger, create one per module, log at the start of every function with context, log in every `catch`. Compare `notificationService.js` before and after tag `step-7-cursor-agent` to see its output.
 
 ### Skills: `.cursor/skills/generate/SKILL.md`
 
@@ -156,7 +156,7 @@ A bigger, reusable procedure run as `/generate`. It tells the agent how to scan 
 
 ### Cloud agent
 
-Commit `7499261` ("Cursor: Apply local changes for cloud agent") came from a Cursor cloud agent and was merged through PR #1. It is the biggest single change in the history: rules, command, skill, logger, tests, priorities and pagination. Read its diff to see how much one well-briefed agent run can do, and what you would want to review before merging.
+The commit tagged `step-7-cursor-agent` ("Cursor: Apply local changes for cloud agent") came from a Cursor cloud agent. It is the biggest single change in the history: rules, command, skill, logger, tests, priorities and pagination. Read its diff to see how much one well-briefed agent run can do, and what you would want to review before merging.
 
 ## 9. Exercises
 
